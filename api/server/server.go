@@ -1237,8 +1237,8 @@ func optionsHandler(eng *engine.Engine, version version.Version, w http.Response
 	w.WriteHeader(http.StatusOK)
 	return nil
 }
-func writeCorsHeaders(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Access-Control-Allow-Origin", "*")
+func writeCorsHeaders(w http.ResponseWriter, r *http.Request, enableCors string) {
+	w.Header().Add("Access-Control-Allow-Origin", enableCors)
 	w.Header().Add("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, X-Registry-Auth")
 	w.Header().Add("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT, OPTIONS")
 }
@@ -1248,7 +1248,7 @@ func ping(eng *engine.Engine, version version.Version, w http.ResponseWriter, r 
 	return err
 }
 
-func makeHttpHandler(eng *engine.Engine, logging bool, localMethod string, localRoute string, handlerFunc HttpApiFunc, enableCors bool, dockerVersion version.Version) http.HandlerFunc {
+func makeHttpHandler(eng *engine.Engine, logging bool, localMethod string, localRoute string, handlerFunc HttpApiFunc, enableCors string, dockerVersion version.Version) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// log the request
 		log.Debugf("Calling %s %s", localMethod, localRoute)
@@ -1267,8 +1267,8 @@ func makeHttpHandler(eng *engine.Engine, logging bool, localMethod string, local
 		if version == "" {
 			version = api.APIVERSION
 		}
-		if enableCors {
-			writeCorsHeaders(w, r)
+		if enableCors != "" {
+			writeCorsHeaders(w, r, enableCors)
 		}
 
 		if version.GreaterThan(api.APIVERSION) {
@@ -1310,7 +1310,7 @@ func AttachProfiler(router *mux.Router) {
 	router.HandleFunc("/debug/pprof/threadcreate", pprof.Handler("threadcreate").ServeHTTP)
 }
 
-func createRouter(eng *engine.Engine, logging, enableCors bool, dockerVersion string) *mux.Router {
+func createRouter(eng *engine.Engine, logging, enableCors string, dockerVersion string) *mux.Router {
 	r := mux.NewRouter()
 	if os.Getenv("DEBUG") != "" {
 		AttachProfiler(r)
@@ -1639,7 +1639,7 @@ func ServeApi(job *engine.Job) engine.Status {
 			return job.Errorf("usage: %s PROTO://ADDR [PROTO://ADDR ...]", job.Name)
 		}
 		go func() {
-			log.Infof("Listening for HTTP on %s (%s)", protoAddrParts[0], protoAddrParts[1])
+			log.Infof("--Listening for HTTP on %s (%s)", protoAddrParts[0], protoAddrParts[1])
 			srv, err := NewServer(protoAddrParts[0], protoAddrParts[1], job)
 			if err != nil {
 				chErrors <- err
